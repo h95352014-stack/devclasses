@@ -1,0 +1,227 @@
+// Production PostgreSQL schema - used by Render.com deployment
+// DO NOT use this locally. Local dev uses prisma/schema.prisma (SQLite)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  name           String
+  role           String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  logs           UserLog[]
+  studentProfile Student?
+  doubtsSubmitted Doubt[]  @relation("StudentDoubts")
+  doubtsResolved  Doubt[]  @relation("FacultyDoubts")
+}
+
+model UserLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  ipAddress String?
+  timestamp DateTime @default(now())
+}
+
+model Student {
+  id              Int          @id @default(autoincrement())
+  userId          Int          @unique
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fatherName      String?
+  mobile          String
+  whatsapp        String?
+  address         String?
+  admissionStatus String       @default("APPROVED")
+  studentIdCard   String?
+  attendance      Attendance[]
+  testResults     TestResult[]
+  courses         Course[]     @relation("StudentCourses")
+}
+
+model Course {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  duration    String
+  features    String
+  fee         Float
+  timings     String
+  targetExam  String
+  active      Boolean   @default(true)
+  students    Student[] @relation("StudentCourses")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Enquiry {
+  id               Int      @id @default(autoincrement())
+  studentName      String
+  className        String
+  mobile           String
+  email            String
+  courseInterested String
+  message          String?
+  status           String   @default("NEW")
+  counselorId      Int?
+  counselorName    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Registration {
+  id           Int      @id @default(autoincrement())
+  studentName  String
+  fatherName   String
+  mobile       String
+  whatsapp     String?
+  email        String
+  address      String
+  courseName   String
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudyMaterial {
+  id               Int      @id @default(autoincrement())
+  title            String
+  subject          String
+  chapter          String
+  fileUrl          String
+  isPremium        Boolean  @default(false)
+  downloadsEnabled Boolean  @default(true)
+  category         String   @default("NOTES")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PYQ {
+  id          Int      @id @default(autoincrement())
+  exam        String
+  year        Int
+  subject     String
+  chapter     String   @default("General")
+  fileUrl     String
+  solutionUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TestSeries {
+  id              Int          @id @default(autoincrement())
+  title           String
+  examType        String
+  durationMinutes Int
+  totalMarks      Int
+  questionsJson   String
+  scheduledDate   DateTime
+  active          Boolean      @default(true)
+  isPremium       Boolean      @default(false)
+  results         TestResult[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model TestResult {
+  id                  Int        @id @default(autoincrement())
+  studentId           Int
+  student             Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  testId              Int
+  test                TestSeries @relation(fields: [testId], references: [id], onDelete: Cascade)
+  score               Float
+  rank                Int?
+  answersJson         String?
+  subjectAnalysisJson String?
+  createdAt           DateTime   @default(now())
+}
+
+model Topper {
+  id          Int      @id @default(autoincrement())
+  name        String
+  exam        String
+  year        Int
+  air         Int
+  marks       String
+  photoUrl    String
+  testimonial String?
+  createdAt   DateTime @default(now())
+}
+
+model Doubt {
+  id              Int      @id @default(autoincrement())
+  studentId       Int
+  student         User     @relation("StudentDoubts", fields: [studentId], references: [id], onDelete: Cascade)
+  facultyId       Int?
+  faculty         User?    @relation("FacultyDoubts", fields: [facultyId], references: [id], onDelete: SetNull)
+  subject         String
+  questionText    String
+  imageUrl        String?
+  responseText    String?
+  responseFileUrl String?
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  scheduledAt DateTime @default(now())
+  published   Boolean  @default(true)
+  category    String   @default("NOTICE")
+  createdAt   DateTime @default(now())
+}
+
+model YoutubeVideo {
+  id        Int      @id @default(autoincrement())
+  title     String
+  videoId   String
+  playlist  String?
+  category  String
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SubscriptionPlan {
+  id           Int      @id @default(autoincrement())
+  name         String
+  price        Float
+  featuresJson String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Gallery {
+  id        Int      @id @default(autoincrement())
+  title     String
+  imageUrl  String
+  category  String
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    String
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

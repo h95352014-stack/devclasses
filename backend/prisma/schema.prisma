@@ -1,0 +1,224 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  name           String
+  role           String    // SUPER_ADMIN, ADMIN, FACULTY, COUNSELOR, CONTENT_MANAGER, STUDENT
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  logs           UserLog[]
+  studentProfile Student?
+  doubtsSubmitted Doubt[]  @relation("StudentDoubts")
+  doubtsResolved  Doubt[]  @relation("FacultyDoubts")
+}
+
+model UserLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  ipAddress String?
+  timestamp DateTime @default(now())
+}
+
+model Student {
+  id              Int          @id @default(autoincrement())
+  userId          Int          @unique
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fatherName      String?
+  mobile          String
+  whatsapp        String?
+  address         String?
+  admissionStatus String       @default("APPROVED") // PENDING, APPROVED, REJECTED
+  studentIdCard   String?      // e.g. DEV-2026-0001
+  attendance      Attendance[]
+  testResults     TestResult[]
+  courses         Course[]     @relation("StudentCourses")
+}
+
+model Course {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  duration    String
+  features    String    // Comma-separated or JSON list of features
+  fee         Float
+  timings     String
+  targetExam  String    // JEE, NEET, FOUNDATION, TARGET
+  active      Boolean   @default(true)
+  students    Student[] @relation("StudentCourses")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Enquiry {
+  id               Int      @id @default(autoincrement())
+  studentName      String
+  className        String
+  mobile           String
+  email            String
+  courseInterested String
+  message          String?
+  status           String   @default("NEW") // NEW, CONTACTED, FOLLOW_UP, CONVERTED
+  counselorId      Int?
+  counselorName    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Registration {
+  id           Int      @id @default(autoincrement())
+  studentName  String
+  fatherName   String
+  mobile       String
+  whatsapp     String?
+  email        String
+  address      String
+  courseName   String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudyMaterial {
+  id               Int      @id @default(autoincrement())
+  title            String
+  subject          String   // Physics, Chemistry, Mathematics, Biology
+  chapter          String
+  fileUrl          String
+  isPremium        Boolean  @default(false)
+  downloadsEnabled Boolean  @default(true)
+  category         String   @default("NOTES") // NOTES, ASSIGNMENT, DPP
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PYQ {
+  id          Int      @id @default(autoincrement())
+  exam        String   // JEE, NEET
+  year        Int
+  subject     String   // Physics, Chemistry, Mathematics, Biology
+  chapter     String   @default("General")
+  fileUrl     String
+  solutionUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TestSeries {
+  id              Int          @id @default(autoincrement())
+  title           String
+  examType        String       // JEE, NEET
+  durationMinutes Int
+  totalMarks      Int
+  questionsJson   String       // Stringified JSON containing questions
+  scheduledDate   DateTime
+  active          Boolean      @default(true)
+  isPremium       Boolean      @default(false)
+  results         TestResult[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model TestResult {
+  id                 Int        @id @default(autoincrement())
+  studentId          Int
+  student            Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  testId             Int
+  test               TestSeries @relation(fields: [testId], references: [id], onDelete: Cascade)
+  score              Float
+  rank               Int?
+  answersJson        String?    // Stringified JSON of student submissions
+  subjectAnalysisJson String?   // Stringified JSON of performance per subject
+  createdAt          DateTime   @default(now())
+}
+
+model Topper {
+  id          Int      @id @default(autoincrement())
+  name        String
+  exam        String   // JEE, NEET
+  year        Int
+  air         Int
+  marks       String
+  photoUrl    String
+  testimonial String?
+  createdAt   DateTime @default(now())
+}
+
+model Doubt {
+  id              Int      @id @default(autoincrement())
+  studentId       Int
+  student         User     @relation("StudentDoubts", fields: [studentId], references: [id], onDelete: Cascade)
+  facultyId       Int?
+  faculty         User?    @relation("FacultyDoubts", fields: [facultyId], references: [id], onDelete: SetNull)
+  subject         String
+  questionText    String
+  imageUrl        String?
+  responseText    String?
+  responseFileUrl String?
+  status          String   @default("PENDING") // PENDING, RESOLVED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  scheduledAt DateTime @default(now())
+  published   Boolean  @default(true)
+  category    String   @default("NOTICE") // NOTICE, EXAM, HOLIDAY, RESULT
+  createdAt   DateTime @default(now())
+}
+
+model YoutubeVideo {
+  id        Int      @id @default(autoincrement())
+  title     String
+  videoId   String
+  playlist  String?
+  category  String   // Physics, Chemistry, Mathematics, Biology, General
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SubscriptionPlan {
+  id           Int      @id @default(autoincrement())
+  name         String
+  price        Float
+  featuresJson String   // Stringified array of features
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Gallery {
+  id        Int      @id @default(autoincrement())
+  title     String
+  imageUrl  String
+  category  String   // CLASSROOM, SEMINAR, TOPPERS, CELEBRATION
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    String   // PRESENT, ABSENT, LEAVE
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String   // Text or JSON value
+  updatedAt DateTime @updatedAt
+}
