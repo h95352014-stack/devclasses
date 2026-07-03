@@ -1294,8 +1294,8 @@ export default function Homepage() {
           <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-xs gap-4">
             <p>&copy; {new Date().getFullYear()} DEV CLASSES. All rights reserved.</p>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-white">Privacy Policy</a>
-              <a href="#" className="hover:text-white">Terms & Conditions</a>
+              <a href="/privacy-policy" className="hover:text-white">Privacy Policy</a>
+              <a href="/terms-and-conditions" className="hover:text-white">Terms &amp; Conditions</a>
             </div>
           </div>
         </div>
