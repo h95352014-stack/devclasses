@@ -16,7 +16,11 @@ const inter = Inter({
 export const metadata = {
   title: "DEV CLASSES | Premier JEE & NEET Coaching Institute",
   description: "Transforming aspirants into IITians & future doctors with top-tier courses, mock tests, and real-time student tracking ERP.",
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+  }
 };
+
 
 export default function RootLayout({ children }) {
   return (
