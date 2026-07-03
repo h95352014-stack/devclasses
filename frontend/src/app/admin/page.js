@@ -7,7 +7,7 @@ import {
   MessageSquare, Settings, LogOut, CheckCircle, Trash2, Edit3, 
   Plus, Check, X, AlertCircle, RefreshCw, Send, Lock, Eye
 } from 'lucide-react';
-import { api } from '@/utils/api';
+import { api, getFileUrl } from '@/utils/api';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   const [materials, setMaterials] = useState([]);
   const [doubts, setDoubts] = useState([]);
   const [toppers, setToppers] = useState([]);
-  const [pyqs, setPyqs] = useState([]);
+  const [pyqs, setPyqs] = useState([]); 
   
   // Settings CMS States
   const [settings, setSettings] = useState({});
@@ -35,9 +35,11 @@ export default function AdminDashboard() {
   const [courseForm, setCourseForm] = useState({ title: '', description: '', duration: '', fee: '', timings: '', targetExam: 'JEE', features: '' });
   const [isEditingCourse, setIsEditingCourse] = useState(false);
   const [editCourseId, setEditCourseId] = useState(null);
-
   // Material Form state
-  const [materialForm, setMaterialForm] = useState({ title: '', subject: 'Physics', chapter: '', fileUrl: '#', isPremium: false, category: 'NOTES' });
+  const [materialForm, setMaterialForm] = useState({ title: '', subject: 'Physics', chapter: '', fileUrl: '', isPremium: false, category: 'NOTES' });
+  const [materialUploading, setMaterialUploading] = useState(false);
+  const [pyqUploading, setPyqUploading] = useState({ fileUrl: false, solutionUrl: false });
+  const [doubtFileUploading, setDoubtFileUploading] = useState({});
 
   // Topper Form state
   const [topperForm, setTopperForm] = useState({ name: '', exam: 'JEE Advanced', year: 2026, air: '', marks: '', photoUrl: '', testimonial: '' });
@@ -205,13 +207,17 @@ export default function AdminDashboard() {
   // Notes Create
   const handleMaterialSubmit = async (e) => {
     e.preventDefault();
+    if (!materialForm.fileUrl) {
+      alert('Please upload a PDF file first before submitting.');
+      return;
+    }
     try {
       await api.createMaterial(materialForm);
-      setMaterialForm({ title: '', subject: 'Physics', chapter: '', fileUrl: '#', isPremium: false, category: 'NOTES' });
+      setMaterialForm({ title: '', subject: 'Physics', chapter: '', fileUrl: '', isPremium: false, category: 'NOTES' });
       alert('Study material uploaded successfully!');
       await refreshAllData();
     } catch (e) {
-      alert('Failed to upload material');
+      alert('Failed to upload material: ' + (e.message || ''));
     }
   };
 
@@ -276,15 +282,21 @@ export default function AdminDashboard() {
   // PYQ Create
   const handlePyqSubmit = async (e) => {
     e.preventDefault();
+    if (!pyqForm.fileUrl) {
+      alert('Please upload the Question PDF file first.');
+      return;
+    }
     try {
       await api.createPyq(pyqForm);
       setPyqForm({ exam: 'JEE Main', subject: 'Physics', chapter: '', year: new Date().getFullYear(), fileUrl: '', solutionUrl: '' });
+      setPyqUploading({ fileUrl: false, solutionUrl: false });
       alert('PYQ Uploaded successfully!');
       await refreshAllData();
     } catch (e) {
-      alert('Failed to upload PYQ');
+      alert('Failed to upload PYQ: ' + (e.message || ''));
     }
   };
+
 
   // Delete PYQ
   const deletePyq = async (id) => {
@@ -1034,12 +1046,32 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Document File URL</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Upload Document (PDF)</label>
                     <input 
-                      type="text" required placeholder="e.g. /uploads/notes-electrostatics.pdf" 
-                      value={materialForm.fileUrl} onChange={e => setMaterialForm({ ...materialForm, fileUrl: e.target.value })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-orange-500"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                      onChange={async (e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setMaterialUploading(true);
+                          try {
+                            const res = await api.uploadFile(e.target.files[0], true);
+                            setMaterialForm(prev => ({ ...prev, fileUrl: res.fileUrl }));
+                          } catch (err) {
+                            alert('File upload failed. Make sure the backend server is running.');
+                          } finally {
+                            setMaterialUploading(false);
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-orange-500"
                     />
+                    {materialUploading && <span className="text-[10px] text-orange-500 font-bold">⏳ Uploading...</span>}
+                    {!materialUploading && materialForm.fileUrl && (
+                      <span className="text-[10px] text-emerald-600 font-bold">✓ File uploaded successfully</span>
+                    )}
+                    {!materialUploading && !materialForm.fileUrl && (
+                      <span className="text-[10px] text-slate-400">No file selected yet</span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 py-1">
@@ -1084,6 +1116,8 @@ export default function AdminDashboard() {
                           ) : (
                             <span className="text-emerald-500 font-bold">Free</span>
                           )}
+                          <span>•</span>
+                          <a href={getFileUrl(mat.fileUrl)} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline font-bold">View Document</a>
                         </div>
                       </div>
 
@@ -1138,6 +1172,18 @@ export default function AdminDashboard() {
                     <p className="text-sm font-semibold text-slate-800 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
                       "{doubt.questionText}"
                     </p>
+                    {doubt.imageUrl && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Attached Image:</p>
+                        <a href={getFileUrl(doubt.imageUrl)} target="_blank" rel="noreferrer">
+                          <img 
+                            src={getFileUrl(doubt.imageUrl)} 
+                            alt="Student Doubt Attachment" 
+                            className="max-h-60 rounded-xl border border-slate-200 object-contain hover:opacity-90 transition-opacity" 
+                          />
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {doubt.status === 'RESOLVED' ? (
@@ -1147,7 +1193,7 @@ export default function AdminDashboard() {
                         "{doubt.responseText}"
                       </p>
                       {doubt.responseFileUrl && (
-                        <a href={doubt.responseFileUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200">
+                        <a href={getFileUrl(doubt.responseFileUrl)} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200">
                           View Attachment
                         </a>
                       )}
@@ -1165,20 +1211,26 @@ export default function AdminDashboard() {
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Attach Solution Document/Photo (Optional)</label>
                         <input 
-                          type="file" 
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           onChange={async (e) => {
                             if (e.target.files && e.target.files[0]) {
+                              setDoubtFileUploading(prev => ({ ...prev, [doubt.id]: true }));
                               try {
                                 const res = await api.uploadFile(e.target.files[0], true);
                                 setDoubtReplyFiles(prev => ({ ...prev, [doubt.id]: res.fileUrl }));
                               } catch (err) {
-                                alert('File upload failed');
+                                alert('File upload failed. Make sure the backend server is running.');
+                              } finally {
+                                setDoubtFileUploading(prev => ({ ...prev, [doubt.id]: false }));
                               }
                             }
                           }}
                           className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
                         />
-                        {doubtReplyFiles[doubt.id] && <span className="text-[10px] text-emerald-600 font-bold">File Attached!</span>}
+                        {doubtFileUploading[doubt.id] && <span className="text-[10px] text-orange-500 font-bold">⏳ Uploading...</span>}
+                        {!doubtFileUploading[doubt.id] && doubtReplyFiles[doubt.id] && <span className="text-[10px] text-emerald-600 font-bold">✓ File Attached!</span>}
+
                       </div>
                       <button
                         onClick={() => handleDoubtResponse(doubt.id)}
@@ -1262,37 +1314,47 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Question Document (File)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Question Document (PDF)</label>
                     <input 
-                      type="file" required 
+                      type="file"
+                      accept=".pdf,.doc,.docx"
                       onChange={async (e) => {
                         if (e.target.files && e.target.files[0]) {
+                          setPyqUploading(prev => ({ ...prev, fileUrl: true }));
                           try {
                             const res = await api.uploadFile(e.target.files[0], true);
-                            setPyqForm({ ...pyqForm, fileUrl: res.fileUrl });
-                          } catch (err) { alert('Upload failed'); }
+                            setPyqForm(prev => ({ ...prev, fileUrl: res.fileUrl }));
+                          } catch (err) { alert('Upload failed. Make sure backend server is running.'); }
+                          finally { setPyqUploading(prev => ({ ...prev, fileUrl: false })); }
                         }
                       }}
                       className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
                     />
-                    {pyqForm.fileUrl && <span className="text-[10px] text-emerald-600 font-bold">Uploaded</span>}
+                    {pyqUploading.fileUrl && <span className="text-[10px] text-orange-500 font-bold">⏳ Uploading...</span>}
+                    {!pyqUploading.fileUrl && pyqForm.fileUrl && <span className="text-[10px] text-emerald-600 font-bold">✓ Question PDF uploaded</span>}
+                    {!pyqUploading.fileUrl && !pyqForm.fileUrl && <span className="text-[10px] text-slate-400">No file selected yet</span>}
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Answer/Solution Document (File)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Answer/Solution Document (PDF)</label>
                     <input 
-                      type="file" required 
+                      type="file"
+                      accept=".pdf,.doc,.docx"
                       onChange={async (e) => {
                         if (e.target.files && e.target.files[0]) {
+                          setPyqUploading(prev => ({ ...prev, solutionUrl: true }));
                           try {
                             const res = await api.uploadFile(e.target.files[0], true);
-                            setPyqForm({ ...pyqForm, solutionUrl: res.fileUrl });
-                          } catch (err) { alert('Upload failed'); }
+                            setPyqForm(prev => ({ ...prev, solutionUrl: res.fileUrl }));
+                          } catch (err) { alert('Upload failed. Make sure backend server is running.'); }
+                          finally { setPyqUploading(prev => ({ ...prev, solutionUrl: false })); }
                         }
                       }}
                       className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
                     />
-                    {pyqForm.solutionUrl && <span className="text-[10px] text-emerald-600 font-bold">Uploaded</span>}
+                    {pyqUploading.solutionUrl && <span className="text-[10px] text-orange-500 font-bold">⏳ Uploading...</span>}
+                    {!pyqUploading.solutionUrl && pyqForm.solutionUrl && <span className="text-[10px] text-emerald-600 font-bold">✓ Solution PDF uploaded</span>}
+                    {!pyqUploading.solutionUrl && !pyqForm.solutionUrl && <span className="text-[10px] text-slate-400">No file selected yet</span>}
                   </div>
 
                   <button 
@@ -1319,8 +1381,8 @@ export default function AdminDashboard() {
                         </div>
                         <h4 className="font-bold text-slate-900 text-xs">{pyq.subject} - {pyq.chapter}</h4>
                         <div className="flex gap-3 text-[10px] text-blue-500 font-bold mt-1">
-                          <a href={pyq.fileUrl} target="_blank" className="hover:underline">Question PDF</a>
-                          <a href={pyq.solutionUrl} target="_blank" className="hover:underline">Solution PDF</a>
+                          <a href={getFileUrl(pyq.fileUrl)} target="_blank" className="hover:underline">Question PDF</a>
+                          <a href={getFileUrl(pyq.solutionUrl)} target="_blank" className="hover:underline">Solution PDF</a>
                         </div>
                       </div>
                       <button onClick={() => deletePyq(pyq.id)} className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded">

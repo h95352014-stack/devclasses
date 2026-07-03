@@ -6,7 +6,7 @@ import {
   FileText, CheckCircle, GraduationCap, Clock, ArrowRight, 
   Play, MessageSquare, HelpCircle, Lock, Download, Star, ExternalLink
 } from 'lucide-react';
-import { api } from '@/utils/api';
+import { api, getFileUrl } from '@/utils/api';
 
 export default function Homepage() {
   // Website data states
@@ -503,7 +503,7 @@ export default function Homepage() {
                   )}
 
                   <a 
-                    href={mat.fileUrl} 
+                    href={getFileUrl(mat.fileUrl)} 
                     className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all active:scale-95"
                   >
                     <Download className="w-3.5 h-3.5" /> PDF
@@ -562,11 +562,11 @@ export default function Homepage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <a href={pyq.fileUrl} className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all">
+                      <a href={getFileUrl(pyq.fileUrl)} className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all">
                         <Download className="w-3.5 h-3.5 text-slate-400" /> Question Paper
                       </a>
                       {pyq.solutionUrl && (
-                        <a href={pyq.solutionUrl} className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all">
+                        <a href={getFileUrl(pyq.solutionUrl)} className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all">
                           <Download className="w-3.5 h-3.5" /> Solutions
                         </a>
                       )}

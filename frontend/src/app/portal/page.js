@@ -7,7 +7,7 @@ import {
   LogOut, CheckCircle, Clock, FileText, ChevronRight, AlertCircle,
   HelpCircle, Send, Check, Play, ChevronLeft, Award, Lock, Download
 } from 'lucide-react';
-import { api } from '@/utils/api';
+import { api, getFileUrl } from '@/utils/api';
 
 export default function StudentPortal() {
   const router = useRouter();
@@ -35,6 +35,7 @@ export default function StudentPortal() {
   // Doubt submission states
   const [doubtForm, setDoubtForm] = useState({ subject: 'Physics', questionText: '', imageUrl: '' });
   const [doubtSuccess, setDoubtSuccess] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Verify auth on mount
   useEffect(() => {
@@ -771,7 +772,7 @@ export default function StudentPortal() {
                           <CheckCircle className="w-3.5 h-3.5" /> Full Access
                         </span>
                         <a 
-                          href={mat.fileUrl} target="_blank" rel="noreferrer"
+                          href={getFileUrl(mat.fileUrl)} target="_blank" rel="noreferrer"
                           className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all active:scale-95"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
@@ -817,6 +818,18 @@ export default function StudentPortal() {
                     <p className="text-xs text-slate-800 font-medium leading-relaxed">
                       Q: {doubt.questionText}
                     </p>
+                    {doubt.imageUrl && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Attached Image:</p>
+                        <a href={getFileUrl(doubt.imageUrl)} target="_blank" rel="noreferrer">
+                          <img 
+                            src={getFileUrl(doubt.imageUrl)} 
+                            alt="Attached Doubt" 
+                            className="max-h-48 rounded-lg border border-slate-200 object-contain hover:opacity-90 transition-opacity" 
+                          />
+                        </a>
+                      </div>
+                    )}
 
                     {doubt.status === 'RESOLVED' ? (
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
@@ -830,7 +843,7 @@ export default function StudentPortal() {
                           "{doubt.responseText}"
                         </p>
                         {doubt.responseFileUrl && (
-                          <a href={doubt.responseFileUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg hover:bg-emerald-200">
+                          <a href={getFileUrl(doubt.responseFileUrl)} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg hover:bg-emerald-200">
                             Download Attached Solution
                           </a>
                         )}
@@ -890,19 +903,24 @@ export default function StudentPortal() {
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Attach Doubt Image (Optional)</label>
                     <input
                       type="file"
+                      accept="image/*"
                       onChange={async (e) => {
                         if (e.target.files && e.target.files[0]) {
+                          setImageUploading(true);
                           try {
                             const res = await api.uploadFile(e.target.files[0], false);
-                            setDoubtForm({ ...doubtForm, imageUrl: res.fileUrl });
+                            setDoubtForm(prev => ({ ...prev, imageUrl: res.fileUrl }));
                           } catch (err) {
-                            alert('Failed to upload image');
+                            alert('Failed to upload image. Make sure the backend server is running.');
+                          } finally {
+                            setImageUploading(false);
                           }
                         }
                       }}
                       className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded-lg text-xs outline-none"
                     />
-                    {doubtForm.imageUrl && <span className="text-[10px] text-emerald-600 font-bold">Image Uploaded Successfully!</span>}
+                    {imageUploading && <span className="text-[10px] text-orange-500 font-bold">⏳ Uploading...</span>}
+                    {!imageUploading && doubtForm.imageUrl && <span className="text-[10px] text-emerald-600 font-bold">✓ Image Uploaded Successfully!</span>}
                   </div>
 
                   <button

@@ -58,7 +58,28 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only PDFs, images, Word and PowerPoint files are allowed.'), false);
+  }
+};
+
+const upload = multer({ 
+  storage, 
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+});
+
 
 // Helper to log user activities
 async function logActivity(userId, action, req) {
@@ -978,13 +999,23 @@ app.post('/api/subscriptions', authenticateToken, requireRole(['SUPER_ADMIN', 'A
 // ==========================================
 // 15. FILE UPLOAD CONTROLLER
 // ==========================================
-app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ fileUrl });
+app.post('/api/upload', authenticateToken, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      // Multer error (file size, file type, etc.)
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File too large. Maximum size is 10MB.' });
+      }
+      return res.status(400).json({ error: err.message || 'File upload error' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded. Please select a file.' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ fileUrl, filename: req.file.filename, originalname: req.file.originalname });
+  });
 });
+
 
 // ==========================================
 // 16. ANALYTICS OVERVIEW API (Admin Dashboard)

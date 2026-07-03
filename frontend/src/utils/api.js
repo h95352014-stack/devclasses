@@ -135,6 +135,18 @@ function getAuthHeaders(isAdmin = false) {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+// Helper to get absolute file URL resolving relative uploads
+export const getFileUrl = (path) => {
+  if (!path || path === '#' || path === '') return '#';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  const backendHost = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${backendHost}${cleanPath}`;
+};
+
+
 // Universal fetch wrapper
 async function request(url, options = {}, isAdmin = false) {
   try {
@@ -606,9 +618,17 @@ export const api = {
       headers,
       body: formData
     });
-    if (!res.ok) throw new Error('Upload failed');
+    if (!res.ok) {
+      let errMsg = 'Upload failed';
+      try {
+        const errData = await res.json();
+        errMsg = errData.error || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
     return await res.json();
   },
+
 
   // Analytics
   async getAnalyticsOverview() {
