@@ -1069,19 +1069,33 @@ app.get('/api/analytics/overview', authenticateToken, requireRole(['SUPER_ADMIN'
 app.listen(PORT, async () => {
   console.log(`DEV CLASSES ERP Server running on http://localhost:${PORT}`);
   
-  // Temporary script to hardcode SUPER_ADMIN password as requested
+  // Auto-seed SUPER_ADMIN on every startup (creates if missing, updates password if exists)
   try {
-    const admin = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
-    if (admin) {
-      const bcrypt = require('bcryptjs');
-      const hash = await bcrypt.hash('Mukesh@devclasses', 10);
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash('Mukesh@devclasses', 10);
+    const existingAdmin = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
+    
+    if (existingAdmin) {
+      // Update the password to ensure it's always correct
       await prisma.user.update({
-        where: { id: admin.id },
+        where: { id: existingAdmin.id },
         data: { password: hash }
       });
-      console.log('Super Admin password successfully set to Mukesh@devclasses');
+      console.log('✅ Super Admin password synced: Mukesh@devclasses');
+    } else {
+      // Create fresh admin user if production DB is empty
+      await prisma.user.create({
+        data: {
+          email: 'admin@devclasses.com',
+          name: 'Mukesh Gurjar',
+          password: hash,
+          role: 'SUPER_ADMIN',
+        }
+      });
+      console.log('✅ Super Admin created: admin@devclasses.com / Mukesh@devclasses');
     }
   } catch (e) {
-    console.error('Error setting admin password on startup:', e);
+    console.error('Error seeding admin on startup:', e);
   }
 });
+
