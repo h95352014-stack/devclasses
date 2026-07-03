@@ -569,11 +569,38 @@ export const api = {
     }
   },
 
+  async getTickerNotifications() {
+    try {
+      return await request('/announcements/ticker');
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async getAllAnnouncements() {
+    try {
+      return await request('/announcements/all', {}, true);
+    } catch (e) {
+      return MOCK_ANNOUNCEMENTS;
+    }
+  },
+
   async createAnnouncement(ann) {
     return await request('/announcements', {
       method: 'POST',
       body: JSON.stringify(ann)
     }, true);
+  },
+
+  async updateAnnouncement(id, data) {
+    return await request(`/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }, true);
+  },
+
+  async deleteAnnouncement(id) {
+    return await request(`/announcements/${id}`, { method: 'DELETE' }, true);
   },
 
   // Youtube Videos
@@ -591,6 +618,19 @@ export const api = {
       body: JSON.stringify(video)
     }, true);
   },
+
+  async updateYoutubeVideo(id, data) {
+    return await request(`/youtube/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }, true);
+  },
+
+  async deleteYoutubeVideo(id) {
+    return await request(`/youtube/${id}`, { method: 'DELETE' }, true);
+  },
+
+
 
   // Subscription Plans
   async getSubscriptions() {

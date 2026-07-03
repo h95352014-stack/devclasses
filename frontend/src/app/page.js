@@ -16,6 +16,7 @@ export default function Homepage() {
   const [materials, setMaterials] = useState([]);
   const [pyqs, setPyqs] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [ticker, setTicker] = useState([]);
   const [videos, setVideos] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -45,7 +46,7 @@ export default function Homepage() {
         const [
           siteSettings, courseList, topperList, 
           materialList, pyqList, annList, 
-          videoList, galleryList, planList
+          videoList, galleryList, planList, tickerList
         ] = await Promise.all([
           api.getSettings(),
           api.getCourses(),
@@ -55,7 +56,8 @@ export default function Homepage() {
           api.getAnnouncements(),
           api.getYoutubeVideos(),
           api.getGallery(),
-          api.getSubscriptions()
+          api.getSubscriptions(),
+          api.getTickerNotifications()
         ]);
 
         setSettings(siteSettings);
@@ -67,6 +69,7 @@ export default function Homepage() {
         setVideos(videoList);
         setGallery(galleryList);
         setPlans(planList);
+        setTicker(tickerList);
 
         // Pre-select first course in forms
         if (courseList.length > 0) {
@@ -202,6 +205,36 @@ export default function Homepage() {
           </div>
         )}
       </header>
+
+      {/* ================= NOTIFICATION TICKER ================= */}
+      {ticker.length > 0 && (
+        <div className="bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 text-white py-2 overflow-hidden relative z-40">
+          <div className="flex items-center">
+            <span className="shrink-0 px-4 py-0.5 bg-white/20 text-xs font-extrabold uppercase tracking-widest border-r border-white/30 mr-4 whitespace-nowrap">
+              🔔 NOTICE
+            </span>
+            <div className="overflow-hidden flex-1">
+              <div 
+                className="flex gap-16 whitespace-nowrap"
+                style={{ animation: 'ticker-scroll 30s linear infinite' }}
+              >
+                {[...ticker, ...ticker].map((item, idx) => (
+                  <span key={idx} className="text-xs font-semibold shrink-0">
+                    {item.content && item.content.startsWith('http') ? (
+                      <a href={item.content} target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
+                        ▶ {item.title}
+                      </a>
+                    ) : (
+                      <span>📢 {item.title}{item.content ? ` — ${item.content}` : ''}</span>
+                    )}
+                    <span className="mx-8 opacity-40">|</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= HERO SECTION ================= */}
       <section id="home" className="relative bg-slate-900 text-white pt-24 pb-20 md:py-32 overflow-hidden">
@@ -694,39 +727,73 @@ export default function Homepage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {videos.map(video => (
-              <div key={video.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between group">
-                {/* Embed video container */}
-                <div className="relative aspect-video bg-black">
-                  <iframe 
-                    className="absolute inset-0 w-full h-full"
-                    src={`https://www.youtube.com/embed/${video.videoId}`} 
-                    title={video.title} 
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowFullScreen
-                  ></iframe>
+              <a
+                key={video.id}
+                href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between group hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                {/* YouTube Thumbnail */}
+                <div className="relative aspect-video bg-slate-900 overflow-hidden">
+                  <img
+                    src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+                    alt={video.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={e => { e.target.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; }}
+                  />
+                  {/* Play button overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/10 transition-colors">
+                    <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                      <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  {video.featured && (
+                    <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                      ⭐ Featured
+                    </span>
+                  )}
                 </div>
 
-                <div className="p-5 text-left space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {video.category} Lecture
-                    </span>
-                    {video.featured && (
-                      <span className="text-[9px] font-extrabold text-orange-600 flex items-center gap-0.5">
-                        <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> FEATURED
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-blue-600 transition-colors">
+                <div className="p-5 text-left space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    {video.category} Lecture
+                  </span>
+                  <h4 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-red-600 transition-colors line-clamp-2">
                     {video.title}
                   </h4>
                   {video.playlist && (
                     <p className="text-[11px] text-slate-400">Playlist: {video.playlist}</p>
                   )}
+                  <div className="flex items-center gap-1 text-red-600 text-xs font-semibold pt-1">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    Watch on YouTube
+                  </div>
                 </div>
-              </div>
+              </a>
             ))}
+          </div>
+
+          {videos.length === 0 && (
+            <div className="text-center py-12 text-slate-400 text-sm">No video lectures added yet.</div>
+          )}
+
+          <div className="text-center mt-12">
+            <a
+              href={settings.youtube_link || 'https://youtube.com/@devclassessikar'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              View All Videos on YouTube Channel
+            </a>
           </div>
         </div>
       </section>
@@ -1158,14 +1225,15 @@ export default function Homepage() {
               </div>
             </div>
 
-            {/* Google Maps Embed */}
+            {/* Google Maps Embed - DEV CLASSES Sikar */}
             <div className="lg:col-span-7 h-96 w-full rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-slate-200">
               <iframe 
-                src={settings.map_embed_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14008.114875747683!2d77.206585!3d28.629615!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd37e2850a95%3A0xa1e0685986ec32b7!2sConnaught%20Place%2C%20New%20Delhi%2C%20Delhi%20110001!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"} 
+                src="https://maps.google.com/maps?q=DEV+CLASSES+Sikar+Rajasthan&output=embed&z=15"
                 className="w-full h-full border-0" 
                 allowFullScreen="" 
                 loading="lazy" 
                 referrerPolicy="no-referrer-when-downgrade"
+                title="DEV CLASSES Sikar Location"
               ></iframe>
             </div>
             

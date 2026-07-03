@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   ShieldAlert, Users, Phone, DollarSign, Award, BookOpen, 
   MessageSquare, Settings, LogOut, CheckCircle, Trash2, Edit3, 
-  Plus, Check, X, AlertCircle, RefreshCw, Send, Lock, Eye
+  Plus, Check, X, AlertCircle, RefreshCw, Send, Lock, Eye, Play, Bell
 } from 'lucide-react';
 import { api, getFileUrl } from '@/utils/api';
 
@@ -59,8 +59,21 @@ export default function AdminDashboard() {
   // Test Series Builder state
   const [tests, setTests] = useState([]);
   const [testForm, setTestForm] = useState({ title: '', examType: 'JEE Main', durationMinutes: 180, totalMarks: 0 });
-  const [testQuestions, setTestQuestions] = useState([]); // [{id, subject, question, options:['','','',''], correctAnswer:0, marks:4}]
+  const [testQuestions, setTestQuestions] = useState([]);
   const [newQuestion, setNewQuestion] = useState({ subject: 'Physics', question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 4 });
+
+  // Video Lectures CMS state
+  const [videos, setVideos] = useState([]);
+  const [videoForm, setVideoForm] = useState({ title: '', videoId: '', playlist: '', category: 'Physics', featured: false });
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+
+  // News & Updates CMS state
+  const [allAnnouncements, setAllAnnouncements] = useState([]);
+  const [annForm, setAnnForm] = useState({ title: '', content: '', category: 'NOTICE' });
+
+  // Notification Ticker CMS state
+  const [tickerItems, setTickerItems] = useState([]);
+  const [tickerForm, setTickerForm] = useState({ title: '', content: '' });
 
   // Load everything
   useEffect(() => {
@@ -114,6 +127,12 @@ export default function AdminDashboard() {
       // Also load students and tests
       try { const sl = await api.getStudents(); setStudents(sl); } catch(e) {}
       try { const tl = await api.getTests(); setTests(tl); } catch(e) {}
+      // Load videos and announcements
+      try { const vl = await api.getYoutubeVideos(); setVideos(vl); } catch(e) {}
+      try { const al = await api.getAllAnnouncements(); 
+        setAllAnnouncements(al.filter(a => a.category !== 'TICKER'));
+        setTickerItems(al.filter(a => a.category === 'TICKER'));
+      } catch(e) {}
     } catch (e) {
       console.error('Error fetching admin workspace data:', e);
     }
@@ -488,6 +507,33 @@ export default function AdminDashboard() {
               }`}
             >
               <Users className="w-4 h-4" /> Student Accounts
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('videos')}
+              className={`w-full py-2.5 px-3 rounded-lg text-left text-xs font-bold flex items-center gap-2.5 transition-all ${
+                activeTab === 'videos' ? 'bg-orange-600 text-white shadow-md shadow-orange-500/10' : 'hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <Play className="w-4 h-4" /> Video Lectures CMS
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('news')}
+              className={`w-full py-2.5 px-3 rounded-lg text-left text-xs font-bold flex items-center gap-2.5 transition-all ${
+                activeTab === 'news' ? 'bg-orange-600 text-white shadow-md shadow-orange-500/10' : 'hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" /> News &amp; Updates CMS
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('ticker')}
+              className={`w-full py-2.5 px-3 rounded-lg text-left text-xs font-bold flex items-center gap-2.5 transition-all ${
+                activeTab === 'ticker' ? 'bg-orange-600 text-white shadow-md shadow-orange-500/10' : 'hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <AlertCircle className="w-4 h-4" /> Notification Ticker
             </button>
 
             <button 
@@ -1829,6 +1875,397 @@ export default function AdminDashboard() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* ==================== VIDEO LECTURES CMS ==================== */}
+        {activeTab === 'videos' && (
+          <div className="space-y-8 animate-fade-in">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900" style={{ fontFamily: 'var(--font-outfit)' }}>Video Lectures CMS</h2>
+              <p className="text-xs text-slate-500 mt-1">Add YouTube video links. Thumbnails are auto-captured from YouTube.</p>
+            </div>
+
+            {/* Add Video Form */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5 text-left">
+              <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Add New Video Lecture</h3>
+              
+              {/* Paste YouTube URL */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-600 uppercase">Paste YouTube Video URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+                    value={videoUrlInput}
+                    onChange={e => {
+                      setVideoUrlInput(e.target.value);
+                      // Auto extract video ID
+                      const url = e.target.value;
+                      const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+                      if (match) {
+                        setVideoForm(prev => ({ ...prev, videoId: match[1] }));
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!videoForm.videoId) { alert('Please paste a valid YouTube URL first.'); return; }
+                      // Auto-fill title from video ID
+                    }}
+                    className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-all"
+                  >
+                    Extract
+                  </button>
+                </div>
+              </div>
+
+              {/* Thumbnail preview */}
+              {videoForm.videoId && (
+                <div className="flex items-start gap-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <img
+                    src={`https://img.youtube.com/vi/${videoForm.videoId}/hqdefault.jpg`}
+                    alt="Thumbnail Preview"
+                    className="w-32 h-20 object-cover rounded-lg border border-slate-300"
+                  />
+                  <div className="text-xs text-slate-600">
+                    <p className="font-bold text-emerald-600">✅ Video ID Detected: {videoForm.videoId}</p>
+                    <p className="text-slate-400 mt-1">Thumbnail auto-captured from YouTube</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Video Title</label>
+                  <input
+                    type="text" required
+                    placeholder="e.g. Electrostatics Full Chapter - JEE 2026"
+                    value={videoForm.title}
+                    onChange={e => setVideoForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Subject Category</label>
+                  <select
+                    value={videoForm.category}
+                    onChange={e => setVideoForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none"
+                  >
+                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'General'].map(s => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Playlist Name (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. JEE Physics Full Course"
+                    value={videoForm.playlist}
+                    onChange={e => setVideoForm(prev => ({ ...prev, playlist: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="video_featured"
+                    checked={videoForm.featured}
+                    onChange={e => setVideoForm(prev => ({ ...prev, featured: e.target.checked }))}
+                    className="w-4 h-4 text-orange-600 border-slate-300 rounded"
+                  />
+                  <label htmlFor="video_featured" className="text-xs font-bold text-slate-700">Mark as Featured Video</label>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!videoForm.title || !videoForm.videoId) { alert('Title and YouTube URL are required.'); return; }
+                  try {
+                    await api.addYoutubeVideo(videoForm);
+                    setVideoForm({ title: '', videoId: '', playlist: '', category: 'Physics', featured: false });
+                    setVideoUrlInput('');
+                    const vl = await api.getYoutubeVideos(); setVideos(vl);
+                    alert('Video lecture added successfully!');
+                  } catch(e) { alert('Failed to add video: ' + e.message); }
+                }}
+                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/15 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Video Lecture
+              </button>
+            </div>
+
+            {/* Videos List */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-left">
+              <div className="p-5 border-b border-slate-100">
+                <h3 className="font-extrabold text-slate-900 text-sm">All Video Lectures ({videos.length})</h3>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
+                {videos.map(v => (
+                  <div key={v.id} className="border border-slate-200 rounded-xl overflow-hidden group">
+                    <div className="relative">
+                      <img
+                        src={`https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`}
+                        alt={v.title}
+                        className="w-full h-28 object-cover"
+                      />
+                      {v.featured && (
+                        <span className="absolute top-1 left-1 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐ Featured</span>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete "${v.title}"?`)) return;
+                          try { await api.deleteYoutubeVideo(v.id); const vl = await api.getYoutubeVideos(); setVideos(vl); }
+                          catch(e) { alert('Delete failed'); }
+                        }}
+                        className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <p className="text-[10px] font-bold text-orange-600 uppercase">{v.category}</p>
+                      <p className="text-xs font-bold text-slate-800 line-clamp-2">{v.title}</p>
+                      <p className="text-[10px] text-slate-400">ID: {v.videoId}</p>
+                    </div>
+                  </div>
+                ))}
+                {videos.length === 0 && (
+                  <div className="col-span-3 py-10 text-center text-slate-400 text-sm">No video lectures added yet.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== NEWS & UPDATES CMS ==================== */}
+        {activeTab === 'news' && (
+          <div className="space-y-8 animate-fade-in">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900" style={{ fontFamily: 'var(--font-outfit)' }}>News &amp; Updates CMS</h2>
+              <p className="text-xs text-slate-500 mt-1">Manage announcements shown in the News &amp; Updates section on the website.</p>
+            </div>
+
+            {/* Add Announcement Form */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4 text-left">
+              <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Post New Announcement</h3>
+              
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Title / Headline</label>
+                  <input
+                    type="text" required
+                    placeholder="e.g. JEE Advanced 2026 Results Announced!"
+                    value={annForm.title}
+                    onChange={e => setAnnForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Category</label>
+                  <select
+                    value={annForm.category}
+                    onChange={e => setAnnForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none"
+                  >
+                    {['NOTICE', 'EXAM', 'HOLIDAY', 'RESULT'].map(c => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Content / Description</label>
+                  <textarea
+                    rows="3" required
+                    placeholder="Full description of the announcement..."
+                    value={annForm.content}
+                    onChange={e => setAnnForm(prev => ({ ...prev, content: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none resize-none focus:border-orange-400"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!annForm.title || !annForm.content) { alert('Title and content are required.'); return; }
+                  try {
+                    await api.createAnnouncement(annForm);
+                    setAnnForm({ title: '', content: '', category: 'NOTICE' });
+                    const al = await api.getAllAnnouncements();
+                    setAllAnnouncements(al.filter(a => a.category !== 'TICKER'));
+                    setTickerItems(al.filter(a => a.category === 'TICKER'));
+                    alert('Announcement posted!');
+                  } catch(e) { alert('Failed: ' + e.message); }
+                }}
+                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/15 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Post Announcement
+              </button>
+            </div>
+
+            {/* Announcements List */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-left">
+              <div className="p-5 border-b border-slate-100">
+                <h3 className="font-extrabold text-slate-900 text-sm">All Announcements ({allAnnouncements.length})</h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {allAnnouncements.map(ann => (
+                  <div key={ann.id} className="p-4 flex items-start justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase ${
+                          ann.category === 'EXAM' ? 'bg-orange-50 text-orange-600' :
+                          ann.category === 'HOLIDAY' ? 'bg-yellow-50 text-yellow-600' :
+                          ann.category === 'RESULT' ? 'bg-emerald-50 text-emerald-600' :
+                          'bg-blue-50 text-blue-600'
+                        }`}>{ann.category}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-800">{ann.title}</p>
+                      <p className="text-xs text-slate-500 line-clamp-2">{ann.content}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete "${ann.title}"?`)) return;
+                        try {
+                          await api.deleteAnnouncement(ann.id);
+                          const al = await api.getAllAnnouncements();
+                          setAllAnnouncements(al.filter(a => a.category !== 'TICKER'));
+                        } catch(e) { alert('Delete failed'); }
+                      }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {allAnnouncements.length === 0 && (
+                  <div className="py-10 text-center text-slate-400 text-sm">No announcements yet.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== NOTIFICATION TICKER CMS ==================== */}
+        {activeTab === 'ticker' && (
+          <div className="space-y-8 animate-fade-in">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900" style={{ fontFamily: 'var(--font-outfit)' }}>Notification Ticker</h2>
+              <p className="text-xs text-slate-500 mt-1">Manage the scrolling notification bar shown at the top of the website. Add YouTube links or text notices.</p>
+            </div>
+
+            {/* Preview */}
+            {tickerItems.length > 0 && (
+              <div className="bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 text-white py-2 px-4 rounded-xl overflow-hidden">
+                <p className="text-[10px] font-bold uppercase text-white/60 mb-1">Live Preview on Website:</p>
+                <div className="flex gap-8 text-xs font-semibold overflow-hidden">
+                  {tickerItems.map(t => (
+                    <span key={t.id} className="shrink-0">
+                      📢 {t.title}{t.content ? ` — ${t.content}` : ''} <span className="opacity-40">|</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add Ticker Item Form */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4 text-left">
+              <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">
+                <Bell className="w-4 h-4 inline mr-1 text-orange-500" />
+                Add Ticker Notification
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                💡 Tip: For a YouTube video link, paste the full URL in the <strong>Content / Link</strong> field — it will become a clickable link on the website.
+              </p>
+              
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Notification Text / Title</label>
+                  <input
+                    type="text" required
+                    placeholder="e.g. New JEE Physics Lecture Live Now! | Admissions Open 2026"
+                    value={tickerForm.title}
+                    onChange={e => setTickerForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Content / Link (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Leave empty for text-only OR paste YouTube URL for clickable link"
+                    value={tickerForm.content}
+                    onChange={e => setTickerForm(prev => ({ ...prev, content: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!tickerForm.title) { alert('Notification text is required.'); return; }
+                  try {
+                    await api.createAnnouncement({ title: tickerForm.title, content: tickerForm.content || '', category: 'TICKER' });
+                    setTickerForm({ title: '', content: '' });
+                    const al = await api.getAllAnnouncements();
+                    setAllAnnouncements(al.filter(a => a.category !== 'TICKER'));
+                    setTickerItems(al.filter(a => a.category === 'TICKER'));
+                    alert('Ticker notification added!');
+                  } catch(e) { alert('Failed: ' + e.message); }
+                }}
+                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/15 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add to Ticker
+              </button>
+            </div>
+
+            {/* Ticker Items List */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden text-left">
+              <div className="p-5 border-b border-slate-100">
+                <h3 className="font-extrabold text-slate-900 text-sm">Active Ticker Items ({tickerItems.length})</h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {tickerItems.map(item => (
+                  <div key={item.id} className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex-1 space-y-0.5">
+                      <p className="text-sm font-bold text-slate-800">📢 {item.title}</p>
+                      {item.content && (
+                        <p className="text-xs text-blue-500 truncate">
+                          {item.content.startsWith('http') ? `🔗 ${item.content}` : item.content}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Remove this ticker item?')) return;
+                        try {
+                          await api.deleteAnnouncement(item.id);
+                          const al = await api.getAllAnnouncements();
+                          setTickerItems(al.filter(a => a.category === 'TICKER'));
+                        } catch(e) { alert('Delete failed'); }
+                      }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {tickerItems.length === 0 && (
+                  <div className="py-10 text-center text-slate-400 text-sm">
+                    No ticker notifications yet. Add one above to show a scrolling bar on the website.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
       </main>

@@ -925,7 +925,7 @@ app.put('/api/doubts/:id/resolve', authenticateToken, requireRole(['SUPER_ADMIN'
 app.get('/api/announcements', async (req, res) => {
   try {
     const list = await prisma.announcement.findMany({
-      where: { published: true },
+      where: { published: true, NOT: { category: 'TICKER' } },
       orderBy: { createdAt: 'desc' }
     });
     res.json(list);
@@ -934,15 +934,60 @@ app.get('/api/announcements', async (req, res) => {
   }
 });
 
+// Ticker notifications (scrolling marquee items)
+app.get('/api/announcements/ticker', async (req, res) => {
+  try {
+    const list = await prisma.announcement.findMany({
+      where: { published: true, category: 'TICKER' },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load ticker' });
+  }
+});
+
+// Admin: get all announcements (including ticker)
+app.get('/api/announcements/all', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
+  try {
+    const list = await prisma.announcement.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load all announcements' });
+  }
+});
+
 app.post('/api/announcements', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
   const { title, content, category } = req.body;
   try {
     const note = await prisma.announcement.create({
-      data: { title, content, category }
+      data: { title, content, category: category || 'NOTICE' }
     });
     res.status(201).json(note);
   } catch (error) {
     res.status(500).json({ error: 'Failed to post announcement' });
+  }
+});
+
+app.put('/api/announcements/:id', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
+  const { title, content, category, published } = req.body;
+  try {
+    const note = await prisma.announcement.update({
+      where: { id: parseInt(req.params.id) },
+      data: { title, content, category, published: published !== undefined ? Boolean(published) : true }
+    });
+    res.json(note);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update announcement' });
+  }
+});
+
+app.delete('/api/announcements/:id', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
+  try {
+    await prisma.announcement.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'Announcement deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete announcement' });
   }
 });
 
@@ -963,13 +1008,36 @@ app.post('/api/youtube', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN',
   const { title, videoId, playlist, category, featured } = req.body;
   try {
     const video = await prisma.youtubeVideo.create({
-      data: { title, videoId, playlist, category, featured: Boolean(featured) }
+      data: { title, videoId, playlist, category: category || 'General', featured: Boolean(featured) }
     });
     res.status(201).json(video);
   } catch (error) {
     res.status(500).json({ error: 'Failed to add YouTube video' });
   }
 });
+
+app.put('/api/youtube/:id', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
+  const { title, videoId, playlist, category, featured } = req.body;
+  try {
+    const video = await prisma.youtubeVideo.update({
+      where: { id: parseInt(req.params.id) },
+      data: { title, videoId, playlist, category, featured: Boolean(featured) }
+    });
+    res.json(video);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update video' });
+  }
+});
+
+app.delete('/api/youtube/:id', authenticateToken, requireRole(['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER']), async (req, res) => {
+  try {
+    await prisma.youtubeVideo.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'Video deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete video' });
+  }
+});
+
 
 // ==========================================
 // 14. SUBSCRIPTION PLANS API
